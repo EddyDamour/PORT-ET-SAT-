@@ -1,5 +1,7 @@
 # AVUASU PORT ET SAT — Transcription P2P en temps réel
 
+> **Statut du projet :** Prototype fonctionnel
+
 AVUASU PORTABLE ET SATELLITE est une application web légère de transcription parole-vers-texte conçue pour la communication en face à face.
 
 Le système repose sur deux appareils :
