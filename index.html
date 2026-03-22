@@ -171,13 +171,24 @@
         let conn = null; 
         let isRecording = false;
         
-        peer = new Peer();
+        // --- MODIFICATION ICI : Activation du mode debug (niveau 3) ---
+        peer = new Peer({ debug: 3 });
         
         peer.on('open', (id) => { 
             peerIdEl.innerText = id; 
             statusEl.innerText = "En attente du satellite"; 
             statusEl.className = "status-wait"; 
         });
+
+        // --- MODIFICATION ICI : Gestion et affichage des erreurs réseau ---
+        peer.on('error', (err) => {
+            console.error("Erreur PeerJS détaillée :", err);
+            statusEl.innerText = "ERREUR RÉSEAU";
+            statusEl.className = "status-off";
+            peerIdEl.innerText = "ÉCHEC";
+            alert("Erreur détectée : " + err.type + "\nVérifiez votre connexion, désactivez les bloqueurs de publicité ou changez de navigateur.");
+        });
+        // --------------------------------------------------------------
         
         peer.on('connection', (connection) => {
             conn = connection;
@@ -233,3 +244,17 @@
             }
             
             transcriptEl.innerHTML = `<div>${final} <i>${interim}</i></div>`;
+            
+            if (conn && conn.open) { 
+                conn.send({ type: 'trans', final: final, interim: interim });
+            }
+        };
+        
+        recognition.onend = () => { 
+            isRecording = false; 
+            btnEl.classList.remove('recording');
+            btnEl.innerText = "MICRO"; 
+        };
+    </script>
+</body>
+</html>
