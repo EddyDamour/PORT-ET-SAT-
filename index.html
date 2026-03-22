@@ -7,13 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { 
-            --bg: #1A1A1A; /* Gris anthracite */
+            --bg: #1A1A1A; 
             --panel-bg: #2A2A2A;
             --text-primary: #E0E0E0; 
             --text-secondary: #999999;
-            --accent-yellow: #F4D03F; /* Jaune beurre */
-            --danger: #E57373; /* Rouge doux */
-            --success: #81C784; /* Vert doux */
+            --accent-yellow: #F4D03F; 
+            --danger: #E57373; 
+            --success: #81C784; 
         }
         
         body { 
@@ -42,16 +42,19 @@
         
         #connection-zone { 
             background: var(--panel-bg); 
-            padding: 20px; 
+            padding: 15px; 
             border-radius: 12px; 
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center; 
             border: 1px solid #333; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         #status { 
             font-weight: 700; 
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: block; 
             font-size: 0.85rem; 
             text-transform: uppercase; 
@@ -60,7 +63,13 @@
         .status-off { color: var(--danger); }
         .status-on { color: var(--success); }
         .status-wait { color: var(--text-secondary); }
-        
+
+        /* Style pour l'ID texte */
+        #id-label {
+            font-size: 0.8rem; 
+            color: var(--text-secondary); 
+            margin-top: 5px;
+        }
         #peer-id-display { 
             font-family: 'Inter', monospace; 
             font-size: 1.2rem; 
@@ -70,14 +79,24 @@
             border-radius: 6px; 
             display: inline-block; 
             margin-top: 5px; 
+            margin-bottom: 10px;
             font-weight: 600;
             border: 1px solid #444;
+        }
+        
+        /* Conteneur du QR Code */
+        #qrcode-container {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 5px;
+            display: none;
         }
         
         .hint { 
             font-size: 0.8rem; 
             color: var(--text-secondary); 
-            margin-top: 12px;
+            margin-top: 10px;
         }
         
         #transcript-container { 
@@ -106,7 +125,7 @@
         
         .controls {
             text-align: center;
-            padding-top: 20px;
+            padding-top: 15px;
             padding-bottom: 10px;
         }
         
@@ -123,14 +142,12 @@
             font-size: 0.85rem;
             letter-spacing: 1px;
             transition: all 0.3s ease; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         
         #main-btn.recording { 
             background: rgba(229, 115, 115, 0.1);
             border-color: var(--danger);
             color: var(--danger);
-            box-shadow: 0 0 15px rgba(229, 115, 115, 0.2);
         }
         
         #main-btn:disabled { 
@@ -138,7 +155,6 @@
             color: #666;
             background: transparent;
             cursor: not-allowed; 
-            box-shadow: none;
         }
     </style>
 </head>
@@ -146,10 +162,14 @@
     <h1>AVUASU - PORT-PAROLE</h1>
 
     <div id="connection-zone">
-        <span id="status" class="status-wait">Génération de l'ID...</span>
-        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 10px;">ID DE CONNEXION SATELLITE :</div>
+        <span id="status" class="status-wait">Génération du lien...</span>
+        
+        <div id="id-label">ID DE CONNEXION :</div>
         <span id="peer-id-display">...</span>
-        <div class="hint">Communiquez ce code au téléphone satellite</div>
+        
+        <div id="qrcode-container"></div>
+        
+        <div class="hint" id="hint-text">Scannez le QR Code ou entrez l'ID sur le Satellite</div>
     </div>
 
     <div id="transcript-container">
@@ -161,37 +181,62 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
     <script>
         const statusEl = document.getElementById('status');
         const peerIdEl = document.getElementById('peer-id-display');
+        const idLabel = document.getElementById('id-label');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const hintText = document.getElementById('hint-text');
         const transcriptEl = document.getElementById('transcript');
         const btnEl = document.getElementById('main-btn');
         
-        let peer = null; 
+        let peer = new Peer({ debug: 2 }); 
         let conn = null; 
         let isRecording = false;
         
-        // --- MODIFICATION ICI : Activation du mode debug (niveau 3) ---
-        peer = new Peer({ debug: 3 });
-        
         peer.on('open', (id) => { 
-            peerIdEl.innerText = id; 
             statusEl.innerText = "En attente du satellite"; 
             statusEl.className = "status-wait"; 
+            
+            // Affichage de l'ID texte
+            peerIdEl.innerText = id;
+            
+            // Génération de l'URL magique
+            const currentUrl = window.location.href.split('?')[0];
+            const basePath = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
+            const satelliteUrl = `${basePath}/satellite.html?id=${id}`;
+            
+            // Création du QR Code
+            qrcodeContainer.style.display = "block";
+            new QRCode(qrcodeContainer, {
+                text: satelliteUrl,
+                width: 140,
+                height: 140,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.L
+            });
         });
 
-        // --- MODIFICATION ICI : Gestion et affichage des erreurs réseau ---
         peer.on('error', (err) => {
-            console.error("Erreur PeerJS détaillée :", err);
+            console.error(err);
             statusEl.innerText = "ERREUR RÉSEAU";
             statusEl.className = "status-off";
             peerIdEl.innerText = "ÉCHEC";
-            alert("Erreur détectée : " + err.type + "\nVérifiez votre connexion, désactivez les bloqueurs de publicité ou changez de navigateur.");
+            hintText.innerText = err.type;
         });
-        // --------------------------------------------------------------
         
         peer.on('connection', (connection) => {
             conn = connection;
+            
+            // Masquer les infos de connexion quand le satellite est lié
+            qrcodeContainer.style.display = "none";
+            peerIdEl.style.display = "none";
+            idLabel.style.display = "none";
+            hintText.style.display = "none";
+            
             statusEl.innerText = "SATELLITE CONNECTÉ";
             statusEl.className = "status-on";
             btnEl.disabled = false;
@@ -202,6 +247,12 @@
                 statusEl.className = "status-off"; 
                 btnEl.disabled = true; 
                 if (isRecording) stopTranscription(); 
+                
+                // Réafficher les infos de connexion
+                qrcodeContainer.style.display = "block";
+                peerIdEl.style.display = "inline-block";
+                idLabel.style.display = "block";
+                hintText.style.display = "block";
             });
         });
 
@@ -212,21 +263,15 @@
         recognition.interimResults = true;
         
         function toggleTranscription() { 
-            if (isRecording) { 
-                stopTranscription(); 
-            } else { 
-                startTranscription();
-            } 
+            if (isRecording) stopTranscription(); 
+            else startTranscription();
         }
         
         function startTranscription() { 
             transcriptEl.innerHTML = "..."; 
             recognition.start();
         }
-        
-        function stopTranscription() { 
-            recognition.stop();
-        }
+        function stopTranscription() { recognition.stop(); }
 
         recognition.onstart = () => { 
             isRecording = true; 
@@ -237,17 +282,12 @@
         recognition.onresult = (event) => {
             let final = '';
             let interim = '';
-            
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) final += event.results[i][0].transcript;
                 else interim += event.results[i][0].transcript;
             }
-            
             transcriptEl.innerHTML = `<div>${final} <i>${interim}</i></div>`;
-            
-            if (conn && conn.open) { 
-                conn.send({ type: 'trans', final: final, interim: interim });
-            }
+            if (conn && conn.open) conn.send({ type: 'trans', final: final, interim: interim });
         };
         
         recognition.onend = () => { 
