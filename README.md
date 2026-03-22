@@ -150,5 +150,3 @@ Améliorations possibles :
 
 À compléter selon votre choix :
 - MIT
-- Apache-2.0
-- licence propriétaire
