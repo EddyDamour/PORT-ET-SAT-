@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVUASU SATELLITE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            /* Remplacement du noir agressif par un gris anthracite foncé */
+            background: #1A1A1A; 
+            /* Remplacement du jaune pur par un jaune beurre plus doux */
+            color: #F4D03F; 
+            /* Nouvelle police */
+            font-family: 'Inter', system-ui, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            transition: background 0.5s; 
+        }
+
+        /* --- ÉCRAN DE CONNEXION --- */
+        #connect-screen { 
+            position: fixed; 
+            top: 0; 
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            background: #1A1A1A; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+            color: white; 
+            padding: 20px;
+            text-align: center; 
+            box-sizing: border-box;
+        }
+        h2 { 
+            letter-spacing: 2px; 
+            color: #E0E0E0; 
+            margin-bottom: 30px;
+            font-weight: 900;
+        }
+        input { 
+            font-size: 1.2rem; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 2px solid #555;
+            background: #2A2A2A; 
+            color: white; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            width: 80%; 
+            max-width: 300px; 
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+        input:focus {
+            border-color: #F4D03F;
+        }
+        button { 
+            font-size: 1rem; 
+            padding: 15px 40px; 
+            border-radius: 50px; 
+            border: none;
+            background: #333; 
+            color: #F4D03F; 
+            font-weight: bold; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #444;
+        }
+
+        /* --- ÉCRAN D'AFFICHAGE DU TEXTE --- */
+        #display-container { 
+            flex: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-start; /* Alignement à gauche pour faciliter la lecture */
+            text-align: left;
+            padding: 40px 5vw; /* Padding réactif */
+        }
+        #text-display { 
+            /* Taille de police réactive basée sur la largeur de l'écran (idéal pour le paysage) */
+            font-size: 7vw; 
+            font-weight: 900; 
+            line-height: 1.2; 
+            word-wrap: break-word;
+            text-transform: uppercase; /* Force les majuscules comme demandé */
+        }
+        #text-display i { 
+            opacity: 0.5; 
+            font-style: normal; 
+            margin-left: 10px; 
+            font-weight: 700;
+            color: #BDBDBD; /* Texte en cours de frappe légèrement différent */
+        }
+
+        /* --- FOOTER AUTO-DESTRUCTION --- */
+        #footer-warning {
+            padding: 15px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #777;
+            font-weight: 400;
+        }
+
+        /* --- ANIMATION DESTRUCTION --- */
+        .destruct { 
+            filter: blur(20px); 
+            opacity: 0; 
+            transition: all 0.4s;
+        }
+    </style>
+</head>
+<body>
+    <div id="connect-screen">
+        <h2>AVUASU<br>SATELLITE</h2>
+        <input type="text" id="master-id-input" placeholder="ID DU PORT-PAROLE">
+        <button onclick="connectToMaster()">Lier les appareils</button>
+    </div>
+
+    <div id="display-container">
+        <div id="text-display">EN ATTENTE...</div>
+    </div>
+    
+    <div id="footer-warning">
+        Le texte s'auto-détruira si la connexion est rompue.
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        const connectScreen = document.getElementById('connect-screen');
+        const inputEl = document.getElementById('master-id-input');
+        const displayEl = document.getElementById('text-display');
+        let peer = new Peer(); 
+        let conn = null;
+
+        function connectToMaster() {
+            const masterId = inputEl.value.trim();
+            if (!masterId) return;
+            
+            conn = peer.connect(masterId);
+            
+            conn.on('open', () => { 
+                connectScreen.style.display = 'none'; 
+                displayEl.innerText = "APPAREIL LIÉ. PRÊT."; 
+            });
+            
+            conn.on('data', (data) => {
+                if (data.type === 'trans') {
+                    displayEl.innerHTML = `${data.final} <i>${data.interim}</i>`;
+                    const len = data.final.length + data.interim.length;
+                    
+                    // Ajustement de la taille de la police avec 'vw' pour s'adapter au mode paysage
+                    displayEl.style.fontSize = len > 60 ? "5.5vw" : "7vw";
+                }
+            });
+            
+            conn.on('close', () => { triggerAutoDestruct(); });
+        }
+
+        function triggerAutoDestruct() {
+            displayEl.classList.add('destruct');
+            setTimeout(() => {
+                displayEl.innerHTML = "SÉCURITÉ :<br>FIN DE FLUX";
+                displayEl.classList.remove('destruct');
+                displayEl.style.color = "#ff4444";
+                document.body.style.background = "#1a0000";
+            }, 400);
+            setTimeout(() => { location.reload(); }, 3000);
+        }
+    </script>
+</body>
+</html>

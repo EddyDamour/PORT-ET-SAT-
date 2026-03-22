@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVUASU - PORT-PAROLE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg: #1A1A1A; /* Gris anthracite */
+            --panel-bg: #2A2A2A;
+            --text-primary: #E0E0E0; 
+            --text-secondary: #999999;
+            --accent-yellow: #F4D03F; /* Jaune beurre */
+            --danger: #E57373; /* Rouge doux */
+            --success: #81C784; /* Vert doux */
+        }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        h1 { 
+            font-size: 1.3rem; 
+            text-align: center; 
+            letter-spacing: 2px; 
+            color: var(--accent-yellow);
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px; 
+            margin-top: 0;
+            font-weight: 700;
+        }
+        
+        #connection-zone { 
+            background: var(--panel-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 20px;
+            text-align: center; 
+            border: 1px solid #333; 
+        }
+        
+        #status { 
+            font-weight: 700; 
+            margin-bottom: 12px;
+            display: block; 
+            font-size: 0.85rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        .status-off { color: var(--danger); }
+        .status-on { color: var(--success); }
+        .status-wait { color: var(--text-secondary); }
+        
+        #peer-id-display { 
+            font-family: 'Inter', monospace; 
+            font-size: 1.2rem; 
+            color: var(--accent-yellow); 
+            background: var(--bg);
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            display: inline-block; 
+            margin-top: 5px; 
+            font-weight: 600;
+            border: 1px solid #444;
+        }
+        
+        .hint { 
+            font-size: 0.8rem; 
+            color: var(--text-secondary); 
+            margin-top: 12px;
+        }
+        
+        #transcript-container { 
+            flex: 1;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px; 
+            overflow-y: auto; 
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #transcript {
+            font-size: 1.3rem; 
+            line-height: 1.5;
+            color: var(--accent-yellow);
+            font-weight: 400;
+        }
+        
+        #transcript i { 
+            opacity: 0.6; 
+            font-style: normal; 
+            color: var(--text-secondary);
+        }
+        
+        .controls {
+            text-align: center;
+            padding-top: 20px;
+            padding-bottom: 10px;
+        }
+        
+        #main-btn { 
+            width: 75px; 
+            height: 75px;
+            border-radius: 50%; 
+            border: 2px solid var(--accent-yellow); 
+            font-weight: 600; 
+            cursor: pointer; 
+            background: var(--bg); 
+            color: var(--accent-yellow); 
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            transition: all 0.3s ease; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        #main-btn.recording { 
+            background: rgba(229, 115, 115, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+            box-shadow: 0 0 15px rgba(229, 115, 115, 0.2);
+        }
+        
+        #main-btn:disabled { 
+            border-color: #444;
+            color: #666;
+            background: transparent;
+            cursor: not-allowed; 
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>AVUASU - PORT-PAROLE</h1>
+
+    <div id="connection-zone">
+        <span id="status" class="status-wait">Génération de l'ID...</span>
+        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 10px;">ID DE CONNEXION SATELLITE :</div>
+        <span id="peer-id-display">...</span>
+        <div class="hint">Communiquez ce code au téléphone satellite</div>
+    </div>
+
+    <div id="transcript-container">
+        <div id="transcript">En attente de connexion satellite...</div>
+    </div>
+
+    <div class="controls">
+        <button id="main-btn" onclick="toggleTranscription()" disabled>MICRO</button>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        const statusEl = document.getElementById('status');
+        const peerIdEl = document.getElementById('peer-id-display');
+        const transcriptEl = document.getElementById('transcript');
+        const btnEl = document.getElementById('main-btn');
+        
+        let peer = null; 
+        let conn = null; 
+        let isRecording = false;
+        
+        peer = new Peer();
+        
+        peer.on('open', (id) => { 
+            peerIdEl.innerText = id; 
+            statusEl.innerText = "En attente du satellite"; 
+            statusEl.className = "status-wait"; 
+        });
+        
+        peer.on('connection', (connection) => {
+            conn = connection;
+            statusEl.innerText = "SATELLITE CONNECTÉ";
+            statusEl.className = "status-on";
+            btnEl.disabled = false;
+            transcriptEl.innerHTML = "Système sécurisé prêt. Appuyez sur le micro pour parler.";
+            
+            conn.on('close', () => { 
+                statusEl.innerText = "SATELLITE DÉCONNECTÉ"; 
+                statusEl.className = "status-off"; 
+                btnEl.disabled = true; 
+                if (isRecording) stopTranscription(); 
+            });
+        });
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR'; 
+        recognition.continuous = true; 
+        recognition.interimResults = true;
+        
+        function toggleTranscription() { 
+            if (isRecording) { 
+                stopTranscription(); 
+            } else { 
+                startTranscription();
+            } 
+        }
+        
+        function startTranscription() { 
+            transcriptEl.innerHTML = "..."; 
+            recognition.start();
+        }
+        
+        function stopTranscription() { 
+            recognition.stop();
+        }
+
+        recognition.onstart = () => { 
+            isRecording = true; 
+            btnEl.classList.add('recording'); 
+            btnEl.innerText = "STOP";
+        };
+        
+        recognition.onresult = (event) => {
+            let final = '';
+            let interim = '';
+            
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) final += event.results[i][0].transcript;
+                else interim += event.results[i][0].transcript;
+            }
+            
+            transcriptEl.innerHTML = `<div>${final} <i>${interim}</i></div>`;
